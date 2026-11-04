@@ -1,56 +1,60 @@
-# Welcome to your Expo app 👋
+# HB+ Portal
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A web app built with React Native for Web (Expo) and Firebase.
+Users sign in with Google, and access is restricted to `@hbplus.fit` email addresses.
 
-## Get started
+**Live demo:** [hbplusdemo.netlify.app](https://hbplusdemo.netlify.app/)
+**Source code:** [github.com/ArnabTechiee/hbplus-auth](https://github.com/ArnabTechiee/hbplus-auth)
 
-1. Install dependencies
+## Tech stack
+- React Native for Web (Expo, Expo Router)
+- Firebase Authentication (Google OAuth 2.0)
+- Cloud Firestore (user records, roles)
+- TypeScript
+- Deployed on Netlify
 
-   ```bash
-   npm install
-   ```
+## Setup
+1. Clone the repo (`git clone https://github.com/ArnabTechiee/hbplus-auth.git`) and run `npm install`.
+2. Create a Firebase project, enable **Authentication → Google** and create a **Firestore** database.
+3. Copy `.env.example` to `.env` and fill in your Firebase web app values.
+4. Publish the Firestore rules from [`firestore.rules`](./firestore.rules).
+5. Run `npx expo start`, then press `w` for web.
 
-2. Start the app
+## Authentication flow
+1. The user clicks **Continue with Google**.
+2. Firebase returns the signed-in Google account.
+3. `AuthContext` checks the email domain on every auth state change.
+4. Allowed domain: a session is kept and the user document is created or loaded from Firestore (`users/{uid}`).
+5. Any other domain: the user is signed out immediately and sees
+   "Access restricted. Please login using your official domain email."
+6. Route groups guard the pages. Signed-out users are redirected to `/login`, and signed-in users are redirected away from it.
 
-   ```bash
-   npx expo start
-   ```
+## How domain restriction works
+- **Client:** `src/lib/domain.ts` validates the email suffix (`@hbplus.fit`) inside `AuthContext`, so it applies on every login and every page reload.
+- **Server:** Firestore security rules reject any request whose token email is not `@hbplus.fit` and verified.
+- The Google `hd` parameter is deliberately not relied on, since it is only a picker hint and can be bypassed.
 
-In the output, you'll find options to open the app in a
+## Roles
+- New users default to `user`.
+- `admin` is assigned manually in the Firestore console.
+- Rules prevent users from changing their own role.
+- Admins see a user list on the dashboard.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Token handling
+- Firebase manages ID tokens and refreshes them automatically. No tokens are stored manually or put in URLs.
+- Web persistence uses Firebase's default browser persistence.
+- Sign out clears the session.
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+## Folder structure
+```
+src/
+  app/          routes ((auth)/login, (app)/index)
+  components/   shared UI
+  context/      AuthContext (session, role, domain check)
+  hooks/        Google sign-in
+  lib/          firebase setup, domain rules, error messages
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
-
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Known limitations
+- Web only; there is no native mobile build.
+- Admin roles must be assigned manually in the Firestore console (no in-app role management).
